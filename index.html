@@ -28,36 +28,113 @@
     <script src="https://telegram.org/js/telegram-web-app.js" defer></script>
     <script src="app/app.js" defer></script>
   </head>
-  <body>
+  <body data-state="start">
+    <!-- Процедурный анимированный фон (рисует app.js, ассеты не нужны) -->
+    <canvas id="bg-fx" aria-hidden="true"></canvas>
+
     <div id="unity-container">
       <canvas id="unity-canvas" tabindex="-1" aria-label="Игровой холст"></canvas>
 
-      <div id="loading" role="status">
-        <!-- Процедурный анимированный фон: рисуется app.js поверх непрозрачной
-             подложки, поэтому стартовая застака Unity под overlay не видна. -->
-        <canvas id="bg-fx" aria-hidden="true"></canvas>
+      <!-- Сюда Unity пишет предупреждения и ошибки -->
+      <div id="unity-warning" aria-live="polite"></div>
 
-        <div class="loading-card">
-          <h1 class="loading-title">Test_tg2</h1>
-          <p class="loading-version" id="loading-version">v1.0.2</p>
+      <!-- Кнопка паузы: появляется только в игре -->
+      <button type="button" id="pause-fab" aria-label="Пауза">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <rect x="6" y="4" width="4" height="16" rx="1.5" fill="currentColor"/>
+          <rect x="14" y="4" width="4" height="16" rx="1.5" fill="currentColor"/>
+        </svg>
+      </button>
 
-          <div class="progress-track"
-               role="progressbar" aria-label="Загрузка сборки"
-               aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
-               id="progress-track">
-            <div class="progress-fill" id="progress-fill"></div>
+      <!-- ===== Стартовое меню ===== -->
+      <div id="menu-start" role="dialog" aria-labelledby="start-title">
+        <div class="card menu-card">
+          <h1 id="start-title" class="game-title">Test<span>_tg2</span></h1>
+          <p class="game-tagline">Лети сквозь препятствия.<br>Касание — взмах крыльев.</p>
+
+          <button type="button" id="play-button" class="btn btn-lg">
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+              <path d="M8 5.5v13c0 .8.9 1.3 1.6.9l10-6.5c.6-.4.6-1.4 0-1.8l-10-6.5C8.9 4.2 8 4.7 8 5.5Z" fill="currentColor"/>
+            </svg>
+            Играть
+          </button>
+
+          <div class="menu-foot">
+            <button type="button" id="start-sound-toggle" class="chip" aria-pressed="true">
+              <svg class="ico-sound-on" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                <path d="M4 9v6h4l5 4V5L8 9H4Z" fill="currentColor"/>
+                <path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+              </svg>
+              <span>Звук включён</span>
+            </button>
+            <span class="version" id="start-version">v1.0.2</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== Экран загрузки (свой вместо заставки Unity) =====
+           .solid делает слой полностью непрозрачным на время движкового
+           splash — застака Unity не показывается вообще. -->
+      <div id="loading" role="status" hidden>
+        <div class="card loading-card">
+          <div class="ring-wrap">
+            <svg class="ring" viewBox="0 0 120 120" aria-hidden="true">
+              <defs>
+                <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#4da3ff"/>
+                  <stop offset="60%" stop-color="#7bc0ff"/>
+                  <stop offset="100%" stop-color="#9be8ff"/>
+                </linearGradient>
+              </defs>
+              <circle class="ring-bg" cx="60" cy="60" r="52"/>
+              <circle class="ring-fg" id="ring-fg" cx="60" cy="60" r="52"/>
+            </svg>
+            <div class="ring-label">
+              <span id="progress-percent" class="ring-percent">0</span>
+              <span class="ring-percent-sign">%</span>
+            </div>
           </div>
 
-          <p class="progress-meta">
-            <span id="progress-percent">0%</span>
-            <span id="progress-size" class="progress-size"></span>
-          </p>
-
           <p class="loading-hint" id="loading-hint">Загружаем игру…</p>
+          <p class="loading-stage" id="progress-size"></p>
 
           <button type="button" id="retry-button" class="btn" hidden>
             Повторить загрузку
           </button>
+        </div>
+      </div>
+
+      <!-- ===== Меню паузы ===== -->
+      <div id="menu-pause" role="dialog" aria-labelledby="pause-title" hidden>
+        <div class="card menu-card">
+          <h2 id="pause-title" class="pause-title">Пауза</h2>
+
+          <button type="button" id="resume-button" class="btn btn-lg">
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+              <path d="M8 5.5v13c0 .8.9 1.3 1.6.9l10-6.5c.6-.4.6-1.4 0-1.8l-10-6.5C8.9 4.2 8 4.7 8 5.5Z" fill="currentColor"/>
+            </svg>
+            Продолжить
+          </button>
+
+          <div class="btn-row">
+            <button type="button" id="restart-button" class="btn btn-ghost">
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7Z" fill="currentColor"/>
+              </svg>
+              Заново
+            </button>
+            <button type="button" id="pause-sound-toggle" class="btn btn-ghost" aria-pressed="true">
+              <svg class="ico-sound-on" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <path d="M4 9v6h4l5 4V5L8 9H4Z" fill="currentColor"/>
+                <path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+              </svg>
+              <svg class="ico-sound-off" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <path d="M4 9v6h4l5 4V5L8 9H4Z" fill="currentColor"/>
+                <path d="M17 9l5 5m0-5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+              </svg>
+              <span>Звук</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -68,9 +145,6 @@
           <p>Поверните телефон горизонтально</p>
         </div>
       </div>
-
-      <!-- Сюда Unity пишет предупреждения и ошибки -->
-      <div id="unity-warning" aria-live="polite"></div>
 
       <footer id="unity-footer">
         <button type="button" id="fullscreen-button" class="icon-button" aria-label="Полноэкранный режим"></button>
