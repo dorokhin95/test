@@ -1,0 +1,24 @@
+# Git LFS для крупных бинарников Unity (если используется LFS)
+# *.data filter=lfs diff=lfs merge=lfs -text
+# *.wasm filter=lfs diff=lfs merge=lfs -text
+# *.bundle filter=lfs diff=lfs merge=lfs -text
+
+# WASM должен отдаваться как бинарник
+*.wasm binary
+*.data binary
+
+# Нормализация переводов строк
+* text=auto
+*.html text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+
+# Изображения — бинарники
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
