@@ -7,8 +7,8 @@
     <title>Test_tg2</title>
     <meta name="description" content="Test_tg2 — сборка Unity WebGL, доступная в браузере и внутри Telegram.">
 
-    <!-- Портретная и альбомная ориентация в WebView Telegram:
-         viewport задаётся здесь один раз, а не подменяется из скрипта. -->
+    <!-- viewport-fit=cover нужен, чтобы canvas доставал до краёв экрана,
+         а вырезы/чёлка учитывались через safe-area-inset в CSS. -->
     <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#101418">
     <meta name="mobile-web-app-capable" content="yes">
@@ -33,6 +33,10 @@
       <canvas id="unity-canvas" tabindex="-1" aria-label="Игровой холст"></canvas>
 
       <div id="loading" role="status">
+        <!-- Процедурный анимированный фон: рисуется app.js поверх непрозрачной
+             подложки, поэтому стартовая застака Unity под overlay не видна. -->
+        <canvas id="bg-fx" aria-hidden="true"></canvas>
+
         <div class="loading-card">
           <h1 class="loading-title">Test_tg2</h1>
           <p class="loading-version" id="loading-version">v1.0.2</p>
@@ -54,6 +58,14 @@
           <button type="button" id="retry-button" class="btn" hidden>
             Повторить загрузку
           </button>
+        </div>
+      </div>
+
+      <!-- Подсказка повернуть телефон (мобильные, портрет) -->
+      <div id="rotate-hint" aria-hidden="true">
+        <div class="rotate-card">
+          <div class="rotate-phone" aria-hidden="true"></div>
+          <p>Поверните телефон горизонтально</p>
         </div>
       </div>
 

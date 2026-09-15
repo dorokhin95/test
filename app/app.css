@@ -1,11 +1,10 @@
-/* app/app.css — дополняет TemplateData/style.css.
-   Исходный TemplateData/style.css остаётся без правок, чтобы
-   пересборка из Unity не затирала ручные улучшения.
-   Все новые правила — здесь. */
+/* app/app.css — единственные стили страницы.
+   Unity-шаблон (TemplateData/style.css) намеренно не подключается:
+   вся обвязка своя, пересборка из Unity её не затирает. */
 
 :root {
   --bg: #0f1419;
-  --bg-elevated: #171d24;
+  --bg-elevated: rgba(23, 29, 36, 0.92);
   --text: #e8eef4;
   --muted: #9aa8b8;
   --accent: #4da3ff;
@@ -21,6 +20,10 @@
 
 html, body {
   height: 100%;
+  /* На iOS Safari без этого страница «прыгает» при появлении клавиатур
+     и в Telescope/WebView: фиксируем прокрутку полностью. */
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 body {
@@ -30,55 +33,83 @@ body {
   font-family: ui-sans-system, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  overflow: hidden;
+  touch-action: manipulation;
 }
 
-/* Контейнер растягивается на весь вьюпорт.
-   Canvas центрируется и масштабируется через JS (см. app.js),
-   чтобы сохранить соотношение сторон сборки. */
+/* ==== Анимированный фон ====
+   Рисуется процедурно в app.js (градиентные пятна + дрейфующие звёзды).
+   Лежит внутри экрана загрузки поверх непрозрачной подложки: заставка
+   Unity полностью скрыта, а фон во время загрузки виден. После старта
+   игры анимация останавливается ради батареи. */
+#bg-fx {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 0;
+}
+
+/* ==== Контейнер игры ====
+   Растянут на весь вьюпорт; padding по safe-area, чтобы на телефонах
+   с вырезом/чёлкой игра не уходила под неё в ландшафте. Unity WebGL
+   сам синхронизирует размер рендера с CSS-размером canvas, поэтому
+   JS-раскладка не нужна. */
 #unity-container {
   position: fixed;
   inset: 0;
+  z-index: 1;
   display: grid;
-  place-items: center;
+  place-items: stretch;
   padding:
-    env(safe-area-inset-top, 0)
-    env(safe-area-inset-right, 0)
-    env(safe-area-inset-bottom, 0)
-    env(safe-area-inset-left, 0);
-  background: radial-gradient(1200px 600px at 50% 0%, #1a2330 0%, var(--bg) 60%);
+    env(safe-area-inset-top, 0px)
+    env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px)
+    env(safe-area-inset-left, 0px);
 }
 
 #unity-canvas {
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
   display: block;
   background: #0b0e12;
-  border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
-  max-width: 100vw;
-  max-height: 100vh;
   outline: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Экран загрузки поверх canvas */
+/* В полноэкранном режиме container уходит в native fullscreen,
+   safe-area там учитывает сам браузер — ничего не меняем. */
+
+/* ==== Экран загрузки ====
+   Полностью перекрывает canvas: движущийся фон рисуется на #bg-fx внутри
+   этого слоя, стартовая застака Unity под ним не видна вообще. */
 #loading {
-  position: absolute;
-  inset: 0;
+  grid-area: 1 / 1;
+  position: relative;
   display: grid;
   place-items: center;
   padding: 24px;
-  background: linear-gradient(180deg, rgba(15, 20, 25, 0.92), rgba(15, 20, 25, 0.88));
-  backdrop-filter: blur(6px);
+  background: #0d1218;
+  z-index: 3;
+  overflow: hidden;
 }
 
 #loading[hidden] { display: none !important; }
 
+/* Плавное исчезновение после готовности движка (см. SPLASH_COVER_MS) */
+#loading { transition: opacity 400ms ease; }
+#loading.fade-out { opacity: 0; pointer-events: none; }
+
 .loading-card {
+  position: relative;
+  z-index: 1;
   width: min(420px, 100%);
   padding: 28px 24px 22px;
   border-radius: var(--radius);
   background: var(--bg-elevated);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
   text-align: center;
 }
 
@@ -121,10 +152,6 @@ body {
   color: var(--muted);
 }
 
-.progress-size {
-  opacity: 0.9;
-}
-
 .loading-hint {
   margin: 14px 0 0;
   font-size: 14px;
@@ -144,18 +171,64 @@ body {
   background: var(--accent);
   color: #06101c;
   min-width: 200px;
-  transition: transform 120ms ease, background 120ms ease, opacity 120ms ease;
+  transition: transform 120ms ease, background 120ms ease;
 }
 
 .btn:active { transform: scale(0.98); }
 .btn:hover { background: var(--accent-press); }
 .btn[hidden] { display: none !important; }
 
-/* Баннер предупреждений Unity */
+/* ==== Подсказка «поверните телефон» ==== */
+#rotate-hint {
+  grid-area: 1 / 1;
+  position: relative;
+  z-index: 4;
+  display: none;
+  place-items: center;
+  background: rgba(10, 14, 18, 0.94);
+}
+
+#rotate-hint.visible { display: grid; }
+
+.rotate-card {
+  text-align: center;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.rotate-phone {
+  width: 56px;
+  height: 92px;
+  margin: 0 auto 18px;
+  border: 3px solid var(--accent);
+  border-radius: 10px;
+  position: relative;
+  animation: rotate-phone 2.6s ease-in-out infinite;
+}
+
+.rotate-phone::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  width: 16px;
+  height: 3px;
+  transform: translateX(-50%);
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+@keyframes rotate-phone {
+  0%, 15%   { transform: rotate(0deg); }
+  55%, 85%  { transform: rotate(90deg); }
+  100%      { transform: rotate(90deg); }
+}
+
+/* ==== Баннеры предупреждений Unity ==== */
 #unity-warning {
   position: absolute;
   left: 50%;
-  top: calc(10px + env(safe-area-inset-top, 0));
+  top: calc(10px + env(safe-area-inset-top, 0px));
   transform: translateX(-50%);
   width: min(560px, calc(100vw - 24px));
   display: none;
@@ -184,21 +257,26 @@ body {
   color: #f0d48a;
 }
 
-/* Футер */
+/* ==== Футер поверх игры ==== */
 #unity-footer {
   position: absolute;
   left: 50%;
-  bottom: calc(10px + env(safe-area-inset-bottom, 0));
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 8px 10px 8px 8px;
   border-radius: 999px;
-  background: rgba(23, 29, 36, 0.9);
+  background: var(--bg-elevated);
   border: 1px solid rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
+
+/* На мобильных кнопка фуллскрина не нужна — Telegram и так во весь экран */
+.is-mobile #unity-footer { display: none; }
 
 #fullscreen-button {
   width: 36px;
@@ -221,6 +299,7 @@ body {
 #noscript-warning {
   position: fixed;
   inset: auto 12px 12px 12px;
+  z-index: 10;
   margin: 0;
   padding: 12px;
   text-align: center;
@@ -230,8 +309,12 @@ body {
   color: #f0d48a;
 }
 
-/* Узкие экраны: карточка загрузки занимает больше ширины */
 @media (max-width: 480px) {
   .loading-card { padding: 22px 18px 18px; }
-  #unity-canvas { border-radius: 0; }
+}
+
+/* Уважаем системную настройку «меньше движения» */
+@media (prefers-reduced-motion: reduce) {
+  .rotate-phone { animation: none; transform: rotate(90deg); }
+  .progress-fill, .btn { transition: none; }
 }
