@@ -1,7 +1,7 @@
 /* app/app.js — обвязка Unity WebGL-страницы.
    Экраны: стартовое меню → загрузка (кольцевой прогресс) → игра ⇄ пауза.
    Плюс: процедурный анимированный фон, синтезированные на WebAudio звуки
-   (взмах крыльев, очко, смерть), альбомная ориентация в Telegram,
+   (взмах крыльев, очко, смерть), вертикальная ориентация в Telegram,
    полноэкранный режим на десктопе. Вне Telegram всё деградирует
    до обычного WebGL-хоста. */
 
@@ -81,11 +81,13 @@
         tg.setHeaderColor("#0d1218");
         tg.setBackgroundColor("#0d1218");
       }
-      // Принудительная альбомная ориентация (Web App SDK 7.7+).
+      // Принудительная вертикальная ориентация, строго верхом вверх
+      // (portrait-primary; просто "portrait" допускает и «вверх ногами»).
+      // Web App SDK 7.7+.
       if (tg.screenOrientation &&
           tg.screenOrientation.isLocked !== true &&
           typeof tg.screenOrientation.lock === "function") {
-        tg.screenOrientation.lock("landscape");
+        tg.screenOrientation.lock("portrait-primary");
       }
       // Аппаратная «назад» в Telegram: пауза, а на паузе — выход в чат.
       if (typeof tg.onEvent === "function") {
@@ -104,22 +106,22 @@
   if (isMobile && !isTelegram && screen.orientation && screen.orientation.lock) {
     const tryLock = () => {
       try {
-        const r = screen.orientation.lock("landscape");
+        const r = screen.orientation.lock("portrait-primary");
         if (r && r.catch) r.catch(() => {});
       } catch (e) { /* unsupported */ }
     };
     window.addEventListener("touchend", tryLock, { once: true });
   }
 
-  // Подсказка «поверните телефон», если всё же остались в портрете.
-  const mqPortrait = window.matchMedia("(orientation: portrait)");
+  // Подсказка «поверните телефон», если всё же остались в ландшафте.
+  const mqLandscape = window.matchMedia("(orientation: landscape)");
   function updateRotateHint() {
-    rotateHint.classList.toggle("visible", isMobile && mqPortrait.matches);
+    rotateHint.classList.toggle("visible", isMobile && mqLandscape.matches);
   }
-  if (mqPortrait.addEventListener) {
-    mqPortrait.addEventListener("change", updateRotateHint);
-  } else if (mqPortrait.addListener) {
-    mqPortrait.addListener(updateRotateHint);
+  if (mqLandscape.addEventListener) {
+    mqLandscape.addEventListener("change", updateRotateHint);
+  } else if (mqLandscape.addListener) {
+    mqLandscape.addListener(updateRotateHint);
   }
   updateRotateHint();
 
@@ -599,7 +601,7 @@
     unityInstance.SetFullscreen(isFullscreen ? 0 : 1);
     if (!isFullscreen && !isTelegram && screen.orientation && screen.orientation.lock) {
       try {
-        const r = screen.orientation.lock("landscape");
+        const r = screen.orientation.lock("portrait-primary");
         if (r && r.catch) r.catch(() => {});
       } catch (e) { /* unsupported */ }
     }

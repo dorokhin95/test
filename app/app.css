@@ -53,8 +53,8 @@ body {
 
 /* ==== Контейнер игры ====
    Растянут на весь вьюпорт; padding по safe-area, чтобы на телефонах
-   с вырезом/чёлкой игра не уходила под неё в ландшафте. Unity WebGL
-   сам синхронизирует размер рендера с CSS-размером canvas. */
+   с вырезом/чёлкой (сверху в портрете) игра не уходила под неё.
+   Unity WebGL сам синхронизирует размер рендера с CSS-размером canvas. */
 #unity-container {
   position: fixed;
   inset: 0;
@@ -371,9 +371,10 @@ body[data-state="running"] #pause-fab { display: grid; }
   background: var(--accent);
 }
 
+/* Телефон в ландшафте (rotate 90deg) разворачивается в портрет */
 @keyframes rotate-phone {
-  0%, 15%  { transform: rotate(0deg); }
-  55%, 100% { transform: rotate(90deg); }
+  0%, 15%  { transform: rotate(90deg); }
+  55%, 100% { transform: rotate(0deg); }
 }
 
 /* ==== Баннеры предупреждений Unity ==== */
@@ -465,7 +466,7 @@ body[data-state="running"] #pause-fab { display: grid; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rotate-phone { animation: none; transform: rotate(90deg); }
+  .rotate-phone { animation: none; }
   .card { animation: none; }
   .btn, #menu-start, #loading, #menu-pause { transition: none; }
 }
